@@ -211,8 +211,134 @@ ON Citas (FechaHora, ConsultorioID);
 /* =====================================================================
    PUNTO 3
 */
+/*============================
+
+Particion RANGE
+============================*/
+
+/*Campos para la reparticion*/
+	-- FechaHora
+/*Script de implementación*/
+CREATE TABLE Citas_Range (
+    CitaID          INT             NOT NULL,
+    PacienteID      INT             NOT NULL,
+    MedicoID        INT             NOT NULL,
+    ConsultorioID   INT             NOT NULL,
+    FechaHora       DATETIME        NOT NULL,
+    Estado          VARCHAR(20)     NOT NULL DEFAULT 'Programada',
+    MotivoConsulta  VARCHAR(300)    NULL,
+    FechaCreacion   DATETIME        NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT PK_Citas_Range PRIMARY KEY (CitaID, FechaHora)
+) ENGINE=InnoDB
+PARTITION BY RANGE COLUMNS(FechaHora) (
+    PARTITION p_202401 VALUES LESS THAN ('2024-02-01 00:00:00'),
+    PARTITION p_202402 VALUES LESS THAN ('2024-03-01 00:00:00'),
+    PARTITION p_202403 VALUES LESS THAN ('2024-04-01 00:00:00'),
+    PARTITION p_202404 VALUES LESS THAN ('2024-05-01 00:00:00'),
+    PARTITION p_202405 VALUES LESS THAN ('2024-06-01 00:00:00'),
+    PARTITION p_202406 VALUES LESS THAN ('2024-07-01 00:00:00'),
+    PARTITION p_202407 VALUES LESS THAN ('2024-08-01 00:00:00'),
+    PARTITION p_202408 VALUES LESS THAN ('2024-09-01 00:00:00'),
+    PARTITION p_future VALUES LESS THAN (MAXVALUE)
+);
+/*Carga de datos*/
+INSERT INTO Citas_Range SELECT * FROM Citas;
+/*Explain*/
+EXPLAIN SELECT * FROM Citas WHERE FechaHora >= '2024-06-01' AND FechaHora < '2024-07-01';
+EXPLAIN SELECT * FROM Citas_Range WHERE FechaHora >= '2024-06-01' AND FechaHora < '2024-07-01';
+
+/*============================
+	   Particion LIST
+============================*/
+
+/*Campos para la reparticion*/
+ -- Campo: Estado
+/*Script de implementación*/
+CREATE TABLE Pagos_List (
+    PagoID          INT             NOT NULL,
+    CitaID          INT             NOT NULL,
+    PacienteID      INT             NOT NULL,
+    Monto           DECIMAL(10,2)   NOT NULL,
+    MetodoPago      VARCHAR(30)     NOT NULL,
+    FechaPago       DATETIME        NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    Estado          VARCHAR(20)     NOT NULL DEFAULT 'Pendiente',
+    CONSTRAINT PK_Pagos_List PRIMARY KEY (PagoID, Estado)
+) ENGINE=InnoDB
+PARTITION BY LIST COLUMNS(Estado) (
+    PARTITION p_pendiente  VALUES IN ('Pendiente'),
+    PARTITION p_pagado     VALUES IN ('Pagado'),
+    PARTITION p_rechazado  VALUES IN ('Rechazado'),
+    PARTITION p_reembolso  VALUES IN ('Reembolsado')
+);
+
+/*Carga de datos*/
+INSERT INTO Pagos_List SELECT * FROM Pagos;
+/*Explain*/
+EXPLAIN SELECT * FROM Pagos WHERE Estado = 'Rechazado';
+EXPLAIN SELECT * FROM Pagos_List WHERE Estado = 'Rechazado';
+
+/*============================
+	  Particion HASH
+============================*/
+/*Campos para la reparticion*/
+-- Campo: PacienteID
+/*Script de implementación*/
+
+CREATE TABLE Citas_Hash (
+    CitaID          INT             NOT NULL,
+    PacienteID      INT             NOT NULL,
+    MedicoID        INT             NOT NULL,
+    ConsultorioID   INT             NOT NULL,
+    FechaHora       DATETIME        NOT NULL,
+    Estado          VARCHAR(20)     NOT NULL DEFAULT 'Programada',
+    MotivoConsulta  VARCHAR(300)    NULL,
+    FechaCreacion   DATETIME        NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT PK_Citas_Hash PRIMARY KEY (CitaID, PacienteID)
+) ENGINE=InnoDB
+PARTITION BY HASH(PacienteID)
+PARTITIONS 8;
+
+/*Carga de datos*/
+INSERT INTO Citas_Hash SELECT * FROM Citas;
+
+/*Explain*/
+-- 1. Medir distribución uniforme de filas
+SELECT TABLE_PARTITION_NAME, TABLE_ROWS 
+FROM INFORMATION_SCHEMA.PARTITIONS 
+WHERE TABLE_NAME = 'Citas_Hash';
+
+-- 2. Demostración de Pruning
+EXPLAIN SELECT * FROM Citas_Hash WHERE PacienteID = 84532;
+EXPLAIN SELECT * FROM Citas WHERE PacienteID = 84532;
+
+/*============================
+		Particion KEY
+============================*/
+
+/*Campos para la reparticion*/
+-- Campo:PacienteID
+/*Script de implementación*/
+
+CREATE TABLE HistorialesMedicos_Key (
+    HistorialID     INT             NOT NULL,
+    PacienteID      INT             NOT NULL,
+    MedicoID        INT             NOT NULL,
+    CitaID          INT             NOT NULL,
+    Diagnostico     VARCHAR(500)    NOT NULL,
+    Tratamiento     VARCHAR(500)    NULL,
+    FechaRegistro   DATETIME        NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT PK_Historiales_Key PRIMARY KEY (HistorialID, PacienteID)
+) ENGINE=InnoDB
+PARTITION BY KEY(PacienteID)
+PARTITIONS 4;
+/*Carga de datos*/
+INSERT INTO HistorialesMedicos_Key SELECT * FROM HistorialesMedicos;
+/*Explain*/
+EXPLAIN SELECT * FROM HistorialesMedicos WHERE PacienteID = 1050;
+EXPLAIN SELECT * FROM HistorialesMedicos_Key WHERE PacienteID = 1050;
 
 /* =====================================================================
    PUNTO 4
 */
 
+-- En el documento de word se encuentra la implementacion de este punto 
