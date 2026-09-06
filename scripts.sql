@@ -303,9 +303,11 @@ INSERT INTO Citas_Hash SELECT * FROM Citas;
 
 /*Explain*/
 -- 1. Medir distribución uniforme de filas
-SELECT TABLE_PARTITION_NAME, TABLE_ROWS 
+
+SELECT PARTITION_NAME, TABLE_ROWS 
 FROM INFORMATION_SCHEMA.PARTITIONS 
-WHERE TABLE_NAME = 'Citas_Hash';
+WHERE TABLE_SCHEMA = 'Clinica' AND TABLE_NAME = 'Citas_Hash'
+ORDER BY PARTITION_NAME;
 
 -- 2. Demostración de Pruning
 EXPLAIN SELECT * FROM Citas_Hash WHERE PacienteID = 84532;
@@ -331,8 +333,10 @@ CREATE TABLE HistorialesMedicos_Key (
 ) ENGINE=InnoDB
 PARTITION BY KEY(PacienteID)
 PARTITIONS 4;
+
 /*Carga de datos*/
 INSERT INTO HistorialesMedicos_Key SELECT * FROM HistorialesMedicos;
+
 /*Explain*/
 EXPLAIN SELECT * FROM HistorialesMedicos WHERE PacienteID = 1050;
 EXPLAIN SELECT * FROM HistorialesMedicos_Key WHERE PacienteID = 1050;
