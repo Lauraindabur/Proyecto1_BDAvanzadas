@@ -345,4 +345,8 @@ EXPLAIN SELECT * FROM HistorialesMedicos_Key WHERE PacienteID = 1050;
    PUNTO 4
 */
 
--- En el documento de word se encuentra la implementacion de este punto 
+EXPLAIN ANALYZE
+SELECT * FROM Pagos
+WHERE MetodoPago = 'Tarjeta'
+  AND Estado = 'Pagado'
+  AND FechaPago BETWEEN '2024-01-01' AND '2024-01-31 23:59:59';
